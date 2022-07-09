@@ -97,68 +97,74 @@ async function documentListContextMenu() {
       });
     });
   }
-
-  // context menu selection
-  // download
-  const contextMenuDownload = $(".context-menu__item__download");
-
-  contextMenuDownload.addEventListener("click", async (e) => {
-    let downloadAPI = `${http}://${domain}/api/my-documents/download?`;
-    const itemsSelected = $$(".document-list__item__container.selected");
-
-    await itemsSelected.forEach((item) => {
-      downloadAPI += `documents[]=${item.getAttribute("docId")}&`;
-    });
-
-    await fetch(downloadAPI)
-      .then((response) => response.blob())
-      .then((blob) => {
-        let fileName;
-        let a = document.createElement("a"); // create a tag a
-
-        a.href = URL.createObjectURL(blob); // create url of blob
-        // Set file name
-        if (itemsSelected.length === 1) {
-          fileName = itemsSelected[0].querySelector(
-            ".document-list__item__container__file-name"
-          ).innerHTML;
-        } else {
-          let time = new Date(Date.now());
-          time.toLocaleTimeString("ICT");
-          fileName = `Documents_${time.getDate()}_${time.getMonth()}_${time.getFullYear()}.zip`;
-        }
-        a.setAttribute("download", fileName); // set file
-        a.click(); // click tag a to download
-      });
-  });
-
-  // delete
-  const contextMenuDelete = $(".context-menu__item__delete");
-  contextMenuDelete.addEventListener("click", (e) => {
-    let deleteAPI = `${http}://${domain}/api/my-documents/deletes`;
-    const xhr = new XMLHttpRequest();
-    const data = new FormData();
-
-    data.append("documentIds", [documentSelected.id, documentSelected.id]);
-    xhr.open("DELETE", deleteAPI);
-    xhr.send(data);
-  });
 }
 
-// document list API
-async function getAllDocument() {
-  const apiGetAll = `${http}://${domain}/api/my-documents/get-all`;
-  let documents;
-  await fetch(apiGetAll, {
-    method: "get",
-    mode: "cors",
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      documents = data;
+// DOWNLOAD DOCUMENTS
+const contextMenuDownload = $(".context-menu__item__download");
+
+contextMenuDownload.addEventListener("click", async (e) => {
+  let downloadAPI = `${http}://${domain}/api/my-documents/download?`;
+  const itemsSelected = $$(".document-list__item__container.selected");
+
+  await itemsSelected.forEach((item) => {
+    downloadAPI += `documents[]=${item.getAttribute("docId")}&`;
+  });
+
+  await fetch(downloadAPI)
+    .then((response) => response.blob())
+    .then((blob) => {
+      let fileName;
+      let a = document.createElement("a"); // create a tag a
+
+      a.href = URL.createObjectURL(blob); // create url of blob
+      // Set file name
+      if (itemsSelected.length === 1) {
+        fileName = itemsSelected[0].querySelector(
+          ".document-list__item__container__file-name"
+        ).innerHTML;
+      } else {
+        let time = new Date(Date.now());
+        time.toLocaleTimeString("ICT");
+        fileName = `Documents_${time.getDate()}_${time.getMonth()}_${time.getFullYear()}.zip`;
+      }
+      a.setAttribute("download", fileName); // set file
+      a.click(); // click tag a to download
     });
-  return documents;
-}
+});
+
+// DELETE DOCUMENTS
+const contextMenuDelete = $(".context-menu__item__delete");
+
+contextMenuDelete.addEventListener("click", async (e) => {
+  let deleteAPI = `${http}://${domain}/api/my-documents/delete?`;
+  const itemsSelected = $$(".document-list__item__container.selected");
+
+  // add documentId to url (query parametter)
+  await itemsSelected.forEach((item) => {
+    deleteAPI += `documents[]=${item.getAttribute("docId")}&`;
+  });
+
+  // Show confirm message
+  showConfirm(
+    {
+      iconURL: "/svg/my-documents/file-delete.svg",
+      headerTitle: "Xác nhận Thao tác",
+      footerTitle: "Tên file",
+      footerContent: "Bạn chắc chắn XÓA tài liệu trên?",
+      cancelButtonContent: "Hủy",
+      confirmButtonContent: "Xóa",
+    },
+    async () => {
+      await fetch(deleteAPI, {
+        method: "delete",
+        mode: "cors",
+      })
+        .then((response) => response.json())
+        .then((result) => console.log(result));
+      renderDocumentList();
+    }
+  );
+});
 
 // UPLOAD DOCUMENT
 const fileDocumentUploadInput = $("#documentFile");
@@ -188,6 +194,21 @@ $(".upload__cancel").addEventListener("click", (e) => {
 const originalFileName = $(
   ".upload__form-content__input-container__original-file-name"
 );
+
+// document list API
+async function getAllDocument() {
+  const apiGetAll = `${http}://${domain}/api/my-documents/get-all`;
+  let documents;
+  await fetch(apiGetAll, {
+    method: "get",
+    mode: "cors",
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      documents = data;
+    });
+  return documents;
+}
 
 fileDocumentUploadInput.addEventListener("change", (e) => {
   const fileName = fileDocumentUploadInput.files[0].name;
@@ -307,10 +328,8 @@ fileDocumentUploadButton.addEventListener("click", async (e) => {
     );
 
     let xhr = new XMLHttpRequest();
-    let netSpeed = [];
-    let cache = 0;
 
-    //show upload form
+    // show upload form
     $(".document-more__uploading").style.display = "flex";
 
     // set file name to document upload form
@@ -391,7 +410,10 @@ fileDocumentUploadButton.addEventListener("click", async (e) => {
     xhr.send(data);
 
     xhr.addEventListener("loadend", (e) => {
-      console.log(xhr.response);
+      renderDocumentList();
+
+      // hide uploading form
+      $(".document-more__uploading").style.display = "none";
     });
   }
 });
@@ -513,27 +535,3 @@ function fileDocumentUploadInputCheck() {
     return false;
   }
 }
-
-// // PROCESS TEXT IN ITEM
-// const documentListItemFileName = $(".document-list__item__file-name");
-// let documentListItemFileNameContent =
-//   documentListItemFileName.innerHTML.split(".");
-
-// documentListItemFileNameContent.pop();
-
-// documentListItemFileNameContent = documentListItemFileNameContent.join(".");
-
-// let documentListItemFileNameType = getFileType(
-//   documentListItemFileName.innerHTML
-// );
-
-// if (documentListItemFileName.innerHTML.length > 24) {
-//   documentListItemFileNameContent =
-//     documentListItemFileNameContent.slice(
-//       0,
-//       22 - documentListItemFileNameType.length - 3
-//     ) + "...";
-
-//   documentListItemFileName.innerHTML =
-//     documentListItemFileNameContent + documentListItemFileNameType;
-// }

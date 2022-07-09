@@ -59,16 +59,21 @@ class APIController {
         ["name", "application", "size", "uploadAt"],
         { sort: { uploadAt: -1 } },
 
-        (err, documentList) => {
-          res.json(documentList);
+        function (err, documentList) {
+          if (!err) {
+            res.json(documentList);
+            res.status(200);
+          } else {
+            res.status(500);
+          }
         }
       );
     },
 
     async upload(req, res, next) {
-      // Authenticate
+      // Validate file
       if (!req.user || !req.body.fileName || !req.files.file) {
-        res.json("Error authenticate!!!");
+        res.json("UPLOAD: Error while validate file!");
         return;
       }
 
@@ -110,25 +115,52 @@ class APIController {
       };
 
       await document.create(fileObject, (err) => {
-        if (err) res.json("ERR: Lỗi lưu khi vào DB");
+        if (err) res.json("UPLOAD: Error when save document to DB!");
       });
 
-      res.json("successfully!");
+      res.json("UPLOAD: Successfully!");
     },
 
-    deletes(req, res, next) {
-      console.log(req.body.documentIds[0]);
+    async delete(req, res, next) {
+      // Authenticate
+      if (!req.user || !req.query.documents) {
+        res.json("DELETE: Error authenticate!");
+        return;
+      }
+
+      const user = req.user;
+      const documents = req.query.documents;
+      let documentsDB = await document.find({ _id: documents }, ["locate"]);
+      let error = false;
+
+      // Delete documents in Disk
+      await documentsDB.forEach((documentDB) => {
+        const documentPath = documentDB.locate;
+        fs.unlink(documentPath, (err) => {
+          if (err) error = true;
+        });
+      });
+
+      // Delete documents in DB
+      await document.deleteMany({ _id: documents }, function (err) {
+        if (err) {
+          res.json("DELETE: Error delete documents in DB!");
+          error = true;
+        }
+      });
+
+      if (error) res.json("DELETE: Successfully!");
     },
 
     async download(req, res, next) {
-      const documents = req.query.documents;
-      const user = req.user;
-
       // Authenticate
-      if (!req.user || !documents) {
-        res.json("Error authenticate!!!");
+      if (!req.user || !req.query.documents) {
+        res.json("DOWNLOAD: Error authenticate!");
         return;
       }
+
+      const documents = req.query.documents;
+      const user = req.user;
 
       if (documents.length === 1) {
         const file = await document.findById(documents[0], ["locate"]);

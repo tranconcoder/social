@@ -137,8 +137,11 @@ async function createToastMessage(name, style, title, content, timeout) {
 function showConfirm(objectOption, resolve, reject) {
   const confirm = $(".confirm");
 
+  // Show confirm form
+  confirm.style.display = "flex";
+
   // Set icon
-  const iconElement = $(".confirm__form__icon");
+  const iconElement = $(".confirm__form__footer__icon");
   iconElement.src = objectOption.iconURL;
 
   // Set header Title
@@ -147,7 +150,7 @@ function showConfirm(objectOption, resolve, reject) {
 
   // Set footer Title
   const footerTitleElement = $(".confirm__form__footer__right__title");
-  footerTitltElement.innerHTML = objectOption.footerTitle;
+  footerTitleElement.innerHTML = objectOption.footerTitle;
 
   // Set footer Content
   const footerContentElement = $(".confirm__form__footer__right__content");
@@ -168,11 +171,12 @@ function showConfirm(objectOption, resolve, reject) {
   // BUTTON CLICK [Cancel]
   cancelButtonElement.addEventListener("click", (e) => {
     confirm.style.display = "none";
-    reject();
+    if (reject) reject();
   });
 
   // BUTTON CLICK [Confirm]
   confirmButtonElement.addEventListener("click", (e) => {
-    resolve();
+    confirm.style.display = "none";
+    if (resolve) resolve();
   });
 }

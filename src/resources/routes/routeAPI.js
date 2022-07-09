@@ -15,6 +15,6 @@ router.post(
   "/my-documents/upload/:id/:name/:size",
   APIController.myDocument.upload
 );
-router.delete("/my-documents/deletes", APIController.myDocument.deletes);
+router.delete("/my-documents/delete", APIController.myDocument.delete);
 
 module.exports = router;
